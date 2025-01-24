@@ -4,7 +4,7 @@ from functools import partial
 
 
 @torch.no_grad()
-def quantize_weight_per_channel_absmax(w, n_bits=8):
+def quantize_weight_per_channel_absmax(w, n_bits=4):
     # w: (out_features, in_features)
     scales = w.abs().max(dim=-1, keepdim=True)[0]
     q_max = 2 ** (n_bits - 1) - 1
@@ -14,7 +14,7 @@ def quantize_weight_per_channel_absmax(w, n_bits=8):
 
 
 @torch.no_grad()
-def quantize_weight_per_tensor_absmax(w, n_bits=8):
+def quantize_weight_per_tensor_absmax(w, n_bits=4):
     # w: (out_features, in_features)
     scales = w.abs().max()
     q_max = 2 ** (n_bits - 1) - 1
@@ -24,7 +24,7 @@ def quantize_weight_per_tensor_absmax(w, n_bits=8):
 
 
 @torch.no_grad()
-def quantize_activation_per_token_absmax(t, n_bits=8):
+def quantize_activation_per_token_absmax(t, n_bits=4):
     t_shape = t.shape
     t.view(-1, t_shape[-1])
     scales = t.abs().max(dim=-1, keepdim=True)[0]
@@ -35,7 +35,7 @@ def quantize_activation_per_token_absmax(t, n_bits=8):
 
 
 @torch.no_grad()
-def quantize_activation_per_tensor_absmax(t, n_bits=8):
+def quantize_activation_per_tensor_absmax(t, n_bits=4):
     t_shape = t.shape
     t.view(-1, t_shape[-1])
     scales = t.abs().max()
@@ -79,10 +79,10 @@ class W8A8Linear(nn.Module):
 
         if act_quant == "per_token":
             self.act_quant_name = "per_token"
-            self.act_quant = partial(quantize_activation_per_token_absmax, n_bits=8)
+            self.act_quant = partial(quantize_activation_per_token_absmax, n_bits=4)
         elif act_quant == "per_tensor":
             self.act_quant_name = "per_tensor"
-            self.act_quant = partial(quantize_activation_per_tensor_absmax, n_bits=8)
+            self.act_quant = partial(quantize_activation_per_tensor_absmax, n_bits=4)
         else:
             raise ValueError(f"Invalid act_quant: {act_quant}")
 
@@ -121,11 +121,11 @@ class W8A8Linear(nn.Module):
         )
         if weight_quant == "per_channel":
             new_module.weight = quantize_weight_per_channel_absmax(
-                module.weight, n_bits=8
+                module.weight, n_bits=4
             )  # use 8-bit integer for weight
         elif weight_quant == "per_tensor":
             new_module.weight = quantize_weight_per_tensor_absmax(
-                module.weight, n_bits=8
+                module.weight, n_bits=4
             )
         else:
             raise ValueError(f"Invalid weight_quant: {weight_quant}")
